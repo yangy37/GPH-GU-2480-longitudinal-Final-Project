@@ -27,6 +27,7 @@ library(knitr)
 library(kableExtra)
 library(lmerTest)
 library(pander)
+library(performance)
 library(corrplot)
 ```
 ### Upload Data
@@ -55,7 +56,6 @@ data$Anxiety4<- data$TA111120
 data$Anxiety5<- data$TA131212
 data$Smoking <- data$TA050762
 data$Race <- data$TA050884
-
 data$age1 <- data$ER33804
 data$age2 <- data$ER33904
 data$age3 <- data$ER34004
@@ -78,71 +78,70 @@ table(data$Race, useNA = "always")
 ```
 
 
-### Descriptive Statistics of the data
+### 3.a Descriptive Statistics of the data
 ```{r}
-pander(head(sample_dat))
+head(sample_dat)
 dim(sample_dat)
 
 des<-sample_dat %>% describe()
-pander(des,caption='Descriptive statistics of the data')
+# Descriptive statistics of the data
+des
 
 # Calculate the correlation coefficient matrix for Anxiety
-cor_anx<-cor(sample_dat[c("Anxiety1","Anxiety2","Anxiety3","Anxiety4",
- "Anxiety5")], use = "pairwise.complete.obs" )
-pander(cor_anx,caption='correlation coefficient matrix for Anxiety')
+cor_anx<-cor(sample_dat[c("Anxiety1","Anxiety2","Anxiety3","Anxiety4", "Anxiety5")], 
+             use = "pairwise.complete.obs" )
+# correlation coefficient matrix for Anxiety
+cor_anx
 
 
-corrplot(cor_anx,method='pie',type='upper',tl.col='black',tl.pos='d',tl.cex=0.7,show.legend=T,
-outline=T,insig='p-value',title='Pearson Correlation Coefficient Thermogram',
-mar=c(0,0,1,0))
+corrplot(cor_anx,method='pie',type='upper',tl.col='black',tl.pos='d',tl.cex=0.7,
+         show.legend=T, outline=T,insig='p-value',
+         title='Pearson Correlation Coefficient Thermogram', mar=c(0,0,1,0))
 
 ```
 
-### Describe the growth in your outcome
+### 3.b i Describe the growth in your outcome
 ```{r, warning=FALSE}
 obs <- dim(sample_dat)[1] # data size
 set.seed(0)
 sample_data <- sample_dat[sample(obs, size = 25),] # Sampling of 25 samples
 sample_dat_long <- sample_data %>%
- select(Anxiety1,Anxiety2,Anxiety3,Anxiety4,Anxiety5,PID,Race) %>%
-pivot_longer(cols = c("Anxiety1","Anxiety2","Anxiety3","Anxiety4","Anxiety5")
-,
-values_to = "Anxiety") %>%
-mutate(wave = case_when(
-name == "Anxiety1" ~ 1,
-name == "Anxiety2" ~ 2,
-name == "Anxiety3" ~ 3,
-name == "Anxiety4" ~ 4,
-name == "Anxiety5" ~ 5))
+  select(Anxiety1,Anxiety2,Anxiety3,Anxiety4,Anxiety5,PID,Race) %>%
+  pivot_longer(cols = c("Anxiety1","Anxiety2","Anxiety3","Anxiety4","Anxiety5"), 
+               values_to = "Anxiety") %>% mutate(wave = case_when( 
+                 name == "Anxiety1" ~ 1, 
+                 name == "Anxiety2" ~ 2, 
+                 name == "Anxiety3" ~ 3, 
+                 name == "Anxiety4" ~ 4, 
+                 name == "Anxiety5" ~ 5))
 sample_dat_long$wave_c <- (sample_dat_long$wave) - 1
 #Individual growth plots
-ggplot(data = sample_dat_long, aes(x = wave_c, y = Anxiety)) +
-geom_point(col='purple') +
-geom_smooth(method = "lm",col='darkorange') +
-facet_wrap(vars(PID))+theme_light() 
-
-#Individual parametric trajectories with mean OLS trajectory
-ggplot(data = sample_dat_long, aes(x = wave_c, y = Anxiety)) +
-geom_smooth(aes(group = as.factor(PID)), method = "lm",
-color="darkgreen",cex=0.8,se=F) +
- geom_smooth(method = "lm",color ="red",se=F,cex=0.9,lty=6)+
-labs(x="Wave",y="Anxiety",title="Individual parametric trajectories with mean
-OLS trajectory")+
-theme_light()
+ggplot(data = sample_dat_long, aes(x = wave_c, y = Anxiety)) + 
+  geom_point(col='gray') + geom_smooth(method = "lm",col='orange') + 
+  facet_wrap(vars(PID))+theme_light() 
 ```
-### sample means of the estimated intercepts and slopes
+### 3.b ii Individual OLS regressions conducted and visualized with the mean trajectory line.
+```{r}
+#Individual parametric trajectories with mean OLS trajectory
+ggplot(data = sample_dat_long, aes(x = wave_c, y = Anxiety)) + 
+  geom_smooth(aes(group = as.factor(PID)), method = "lm", color="gray",cex=0.8,se=F) + 
+  geom_smooth(method = "lm",color ="orange",se=F,cex=0.9,lty=6)+ 
+  labs(x="Wave",y="Anxiety",title="Individual parametric trajectories with mean OLS trajectory")+ 
+  theme_light()
+```
+
+
+### 3.c i sample means of the estimated intercepts and slopes
 ```{r}
 sample_dat_long <- sample_dat %>%
-  select(Anxiety1,Anxiety2,Anxiety3,Anxiety4,Anxiety5,PID) %>%
-pivot_longer(cols = c("Anxiety1","Anxiety2","Anxiety3","Anxiety4","Anxiety5"),
-values_to = "Anxiety") %>%
-mutate(wave = case_when(
-name == "Anxiety1" ~ 1,
-name == "Anxiety2" ~ 2,
-name == "Anxiety3" ~ 3,
-name == "Anxiety4" ~ 4,
-name == "Anxiety5" ~ 5
-))
+  select(Anxiety1,Anxiety2,Anxiety3,Anxiety4,Anxiety5,PID) %>% 
+  pivot_longer(cols = c("Anxiety1","Anxiety2","Anxiety3","Anxiety4","Anxiety5"), 
+               values_to = "Anxiety") %>% mutate(wave = case_when( 
+                 name == "Anxiety1" ~ 1,
+                 name == "Anxiety2" ~ 2,
+                 name == "Anxiety3" ~ 3,
+                 name == "Anxiety4" ~ 4,
+                 name == "Anxiety5" ~ 5))
 sample_dat_long$wave_c <- sample_dat_long$wave - 1
 
 # Group by PID and create a new missing wave column
@@ -156,8 +155,7 @@ sample_dat_long3 <- sample_dat_long_2 %>%
   filter(sum(missing_waves) < 3)
 
 # Building a linear model
-model1 <- sample_dat_long3  %>%
-  dplyr::group_by(PID) %>%
+model1 <- sample_dat_long3  %>% dplyr::group_by(PID) %>% 
   do(model = lm(Anxiety ~ wave_c, data =.))
 model1[[2]][[1]]
 
@@ -169,24 +167,24 @@ for(i in 1:nrow(model1)){
   slope[i] <- model1[[2]][[i]][["coefficients"]][2]
 }
 ```
-### Sample Variance
+### 3.c ii Sample Variance
 ```{r}
-pander(summary(intercept),caption='Descriptive statistics of intercept')
+summary(intercept)
 var(intercept)
-pander(summary(slope),caption='Descriptive statistics of slope')
+summary(slope)
 var(slope)
 ```
-### correlation between the estimated intercepts and slopes
+### 3.c iii correlation between the estimated intercepts and slopes
 ```{r}
 # Check the covariance of slope and intercept
 cor(intercept,slope)
 ```
 
-## Model building
+## 3.D Model building
 
-### Conduct the unconditional mean model
+### 3.D.i Conduct the unconditional mean model
 
-#### Interpret the fixed and random effects
+#### 3.D.i 1 Interpret the fixed and random effects
 ```{r}
 dat_long <- sample_dat %>%
   dplyr::select(Anxiety1,Anxiety2,Anxiety3,Anxiety4,Anxiety5,
@@ -209,10 +207,9 @@ model.a <- lmer(Anxiety ~ 1 + (1 |PID), data = dat_long, REML = FALSE)
 summary(model.a)
 ```
 
-#### Conduct the ICC and interpret
+#### 3.D.i 2Conduct the ICC and interpret
 
 ```{r}
-library(performance)
 performance::icc(model.a)
 
 icc_n <- as.data.frame(VarCorr(model.a),comp="Variance")$vcov[1]
@@ -221,22 +218,22 @@ icc_d <- as.data.frame(VarCorr(model.a),comp="Variance")$vcov[1] +
 icc_n / icc_d
 ```
 
-### Conduct the unconditional growth model
+### 3.D.ii Conduct the unconditional growth model
 
-#### Interpret the fixed and random effects
+#### 3.D.ii 1 Interpret the fixed and random effects
 
 ```{r message=FALSE, warning=FALSE}
 model.b <- lmer(Anxiety ~ wave_c + (wave_c|PID), data = dat_long, REML = FALSE)
 summary(model.b)
 ```
 
-#### Conduct the ICC and interpret
-
+#### 3.D.ii 2 Graph the unconditional growth model
 ```{r}
-performance::icc(model.b)
+data_tmp <- data.frame(Anxiety.pred = predict(model.b),
+                        wave = model.b@frame[["wave_c"]])
 
-icc_n <- as.data.frame(VarCorr(model.b),comp="Variance")$vcov[1]
-icc_d <- as.data.frame(VarCorr(model.b),comp="Variance")$vcov[1] + 
-         as.data.frame(VarCorr(model.b),comp="Variance")$vcov[2]
-icc_n / icc_d
+ggplot(data = data_tmp, mapping = aes(x = wave, y = Anxiety.pred)) +
+  geom_point(col='orange',cex=0.9) +
+  stat_smooth(method="lm", formula = y ~ x,cex=0.8) +
+  theme_light()
 ```
