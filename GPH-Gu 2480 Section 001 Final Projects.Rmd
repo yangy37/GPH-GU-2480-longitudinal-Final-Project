@@ -13,6 +13,7 @@ library(haven)
 library(psych)
 library(tidyverse)
 library(labelled)
+library(table1)
 library(dplyr)
 library(haven)
 library(tidyverse)
@@ -45,6 +46,7 @@ obs
 
 sum(duplicated(data$PID))
 
+
 ```
 
 ```{r}
@@ -75,36 +77,41 @@ sample_dat <- data %>%
     Race == 7 | Race == 8 | Race == 9 ~ NA_character_
   )) 
 table(data$Race, useNA = "always")
+sample_dat_1 <- sample_dat %>% filter(!is.na(Anxiety1))
+dim(sample_dat_1)
+sample_dat_2 <- sample_dat_1 %>% filter(!is.na(Anxiety2))
+sample_dat_3 <- sample_dat_2 %>% filter(!is.na(Anxiety3))
+sample_dat_4 <- sample_dat_3 %>% filter(!is.na(Anxiety4))
+sample_dat_5 <- sample_dat_4 %>% filter(!is.na(Anxiety5))
+sample_dat_6 <- sample_dat_5 %>% filter(!is.na(Smoking))
+dim(sample_dat_6)
+
+
+table1(~.|Anxiety1 , data = sample_dat_6)
 ```
 
 
 ### 3.a Descriptive Statistics of the data
 ```{r}
-head(sample_dat)
-dim(sample_dat)
+head(sample_dat_6)
+dim(sample_dat_6)
 
-des<-sample_dat %>% describe()
+des<-sample_dat_6 %>% describe()
 # Descriptive statistics of the data
 des
 
 # Calculate the correlation coefficient matrix for Anxiety
-cor_anx<-cor(sample_dat[c("Anxiety1","Anxiety2","Anxiety3","Anxiety4", "Anxiety5")], 
+cor_anx<-cor(sample_dat_6[c("Anxiety1","Anxiety2","Anxiety3","Anxiety4", "Anxiety5")], 
              use = "pairwise.complete.obs" )
 # correlation coefficient matrix for Anxiety
 cor_anx
-
-
-corrplot(cor_anx,method='pie',type='upper',tl.col='black',tl.pos='d',tl.cex=0.7,
-         show.legend=T, outline=T,insig='p-value',
-         title='Pearson Correlation Coefficient Thermogram', mar=c(0,0,1,0))
-
 ```
 
 ### 3.b i Describe the growth in your outcome
 ```{r, warning=FALSE}
-obs <- dim(sample_dat)[1] # data size
+obs <- dim(sample_dat_6)[1] # data size
 set.seed(0)
-sample_data <- sample_dat[sample(obs, size = 25),] # Sampling of 25 samples
+sample_data <- sample_dat_6[sample(obs, size = 25),] # Sampling of 25 samples
 sample_dat_long <- sample_data %>%
   select(Anxiety1,Anxiety2,Anxiety3,Anxiety4,Anxiety5,PID,Race) %>%
   pivot_longer(cols = c("Anxiety1","Anxiety2","Anxiety3","Anxiety4","Anxiety5"), 
@@ -237,3 +244,53 @@ ggplot(data = data_tmp, mapping = aes(x = wave, y = Anxiety.pred)) +
   stat_smooth(method="lm", formula = y ~ x,cex=0.8) +
   theme_light()
 ```
+### iii.Conduct a growth model with the main IV only
+
+#### 1.Interpret the fixed and random effects
+
+```{r}
+table(dat_long$Race)
+```
+
+```{r}
+model.c <- lmer(Anxiety ~ wave_c*Race + (wave_c|PID), data = dat_long)
+summary(model.c)
+```
+
+```{r}
+df.plot.c <- data.frame(Anxiety.pred = predict(model.c),
+                        wave = model.c@frame[["wave_c"]],
+                        Race = model.c@frame[["Race"]])
+
+ggplot(data = df.plot.c, mapping = aes(x = wave, y = Anxiety.pred, group = Race, color = Race)) +
+  geom_point(cex=0.9) +
+  stat_smooth(method="lm", formula = y ~ x,cex=0.8)+theme_light()
+```
+
+### iv.Conduct a growth model with the main IV and at least one additional time-varying covariate
+
+#### 1.Interpret the fixed and random effects
+
+```{r message=FALSE, warning=FALSE}
+model.d <- lmer(Anxiety ~ wave_c*Race + factor(age) + (wave_c|PID), data = dat_long, REML = FALSE)
+summary(model.d)
+```
+
+#### 2.Graph the growth model
+
+```{r}
+plot_model(model.d, type = "pred", terms = c("wave_c", "Race", "age"))
+```
+
+### v.Using the fit statistics learned in class (i.e. Likelihood, Devianceand AIC/BIC) assess the model fit between the 4 models conducted. Which is the best model and why?
+
+```{r message=FALSE, warning=FALSE}
+df <- data.frame(fit.stats = c("-2LL", "Deviance", "AIC", "BIC"),
+                 model.a = c(-2*logLik(model.a), deviance(model.a), AIC(model.a), BIC(model.a)),
+                 model.b = c(-2*logLik(model.b), deviance(model.b), AIC(model.b), BIC(model.b)),
+                 model.c = c(-2*logLik(model.c), deviance(model.c), AIC(model.c), BIC(model.c)),
+                 model.d = c(-2*logLik(model.d), deviance(model.d), AIC(model.d), BIC(model.d)))
+pander(df,caption='Model Comparison')
+```
+
+
