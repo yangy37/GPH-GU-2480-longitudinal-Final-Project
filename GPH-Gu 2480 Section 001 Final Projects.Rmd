@@ -87,7 +87,7 @@ sample_dat_6 <- sample_dat_5 %>% filter(!is.na(Smoking))
 dim(sample_dat_6)
 
 
-table1(~.|Anxiety1 , data = sample_dat_6)
+#table1(~.|Anxiety1 , data = sample_dat_6)
 ```
 
 
@@ -193,6 +193,7 @@ cor(intercept,slope)
 
 #### 3.D.i 1 Interpret the fixed and random effects
 ```{r}
+set.seed(0)
 dat_long <- sample_dat %>%
   dplyr::select(Anxiety1,Anxiety2,Anxiety3,Anxiety4,Anxiety5,
           age1,age2,age3,age4,age5,PID)  %>% 
@@ -230,6 +231,7 @@ icc_n / icc_d
 #### 3.D.ii 1 Interpret the fixed and random effects
 
 ```{r message=FALSE, warning=FALSE}
+set.seed(0)
 model.b <- lmer(Anxiety ~ wave_c + (wave_c|PID), data = dat_long, REML = FALSE)
 summary(model.b)
 ```
@@ -253,6 +255,7 @@ table(dat_long$Race)
 ```
 
 ```{r}
+set.seed(0)
 model.c <- lmer(Anxiety ~ wave_c*Race + (wave_c|PID), data = dat_long)
 summary(model.c)
 ```
@@ -272,6 +275,7 @@ ggplot(data = df.plot.c, mapping = aes(x = wave, y = Anxiety.pred, group = Race,
 #### 1.Interpret the fixed and random effects
 
 ```{r message=FALSE, warning=FALSE}
+set.seed(0)
 model.d <- lmer(Anxiety ~ wave_c*Race + factor(age) + (wave_c|PID), data = dat_long, REML = FALSE)
 summary(model.d)
 ```
